@@ -10,10 +10,7 @@ All orchestration is handled by Apache Airflow, running inside a Docker network 
 
 <img width="3187" height="909" alt="Stock Pipeline Architecture" src="https://github.com/user-attachments/assets/2fd7e418-074e-4707-a2b7-d18c83d90375" />
 
-===============
-🛠️ Tech Stack
-===============
-
+🔧 Tech Stack
 Component	Purpose
 Airflow	Orchestration and scheduling
 MinIO	S3-compatible object storage
@@ -21,13 +18,8 @@ PySpark	JSON flattening → Parquet conversion
 Docker	Local containerized environment
 Postgres	Data warehouse
 Metabase	BI dashboard and analytics
-Yahoo Finance API	Data source
-
-
-=====================
-📂 Project Structure
-=====================
-
+Yahoo Finance API	Stock data source
+📁 Project Structure
 multiple_stock_prices/
 │
 ├── dags/
@@ -46,7 +38,6 @@ multiple_stock_prices/
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
-
 
 ⚙️ Pipeline Breakdown
 1. API Availability Check
