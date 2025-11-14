@@ -1,0 +1,142 @@
+services:
+  # Airflow Services
+  webserver:
+    image: quay.io/astronomer/astro-runtime:11.4.0
+    container_name: airflow-webserver
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/stock_market
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+    volumes:
+      - ./dags:/usr/local/airflow/dags:rw
+      - ./include:/usr/local/airflow/include:rw
+      - ./plugins:/usr/local/airflow/plugins:rw
+    networks:
+      - ndsnet
+    depends_on:
+      - postgres
+      - scheduler
+
+  scheduler:
+    image: quay.io/astronomer/astro-runtime:11.4.0
+    container_name: airflow-scheduler
+    restart: always
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/stock_market
+    volumes:
+      - ./dags:/usr/local/airflow/dags:rw
+      - ./include:/usr/local/airflow/include:rw
+      - ./plugins:/usr/local/airflow/plugins:rw
+    networks:
+      - ndsnet
+    depends_on:
+      - postgres
+
+  triggerer:
+    image: quay.io/astronomer/astro-runtime:11.4.0
+    container_name: airflow-triggerer
+    restart: always
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:postgres@postgres:5432/stock_market
+    volumes:
+      - ./dags:/usr/local/airflow/dags:rw
+      - ./include:/usr/local/airflow/include:rw
+      - ./plugins:/usr/local/airflow/plugins:rw
+    networks:
+      - ndsnet
+    depends_on:
+      - postgres
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: stock_market
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ndsnet
+
+  # MinIO
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    container_name: minio
+    hostname: minio
+    restart: always
+    volumes:
+      - ./include/data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    command: server /data --console-address ":9001"
+    networks:
+      - ndsnet
+
+  # Spark
+  spark-master:
+    image: airflow/spark-master
+    build: ./spark/master
+    container_name: spark-master
+    ports:
+      - "8082:8080"
+      - "7077:7077"
+    environment:
+      - INIT_DAEMON_STEP=setup_spark
+    networks:
+      - ndsnet
+
+  spark-worker:
+    image: airflow/spark-worker
+    build: ./spark/worker
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - "SPARK_MASTER=spark://spark-master:7077"
+    networks:
+      - ndsnet
+
+  # Metabase
+  metabase:
+    image: metabase/metabase:v0.52.8.4
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./include/data/metabase:/metabase-data
+    networks:
+      - ndsnet
+
+  # Docker Proxy
+  docker-proxy:
+    image: alpine/socat
+    command: "TCP4-LISTEN:2375,fork,reuseaddr UNIX-CONNECT:/var/run/docker.sock"
+    ports:
+      - "2376:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ndsnet
+
+volumes:
+  postgres_data:
+
+networks:
+  ndsnet:
+    driver: bridge
