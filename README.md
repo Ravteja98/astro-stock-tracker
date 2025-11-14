@@ -177,6 +177,11 @@ Deploying to Kubernetes
 
 Pull requests, suggestions, and improvements are welcome.
 
+ANALYTICS: 
+
+![Stock_Market_Analysis_](https://github.com/user-attachments/assets/f514a38c-7cb1-43eb-9c78-e6dd11be8c5f)
+
+
 📬 Contact
 
 If you want a walkthrough or collaboration, reach out on LinkedIn - https://www.linkedin.com/in/ravichintalapudi/
