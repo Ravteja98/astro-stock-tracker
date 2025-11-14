@@ -10,44 +10,181 @@ All orchestration is handled by Apache Airflow, running inside a Docker network 
 
 <img width="3187" height="909" alt="Stock Pipeline Architecture" src="https://github.com/user-attachments/assets/2fd7e418-074e-4707-a2b7-d18c83d90375" />
 
+===============
+🛠️ Tech Stack
+===============
 
-Project Contents
-================
+Component	Purpose
+Airflow	Orchestration and scheduling
+MinIO	S3-compatible object storage
+PySpark	JSON flattening → Parquet conversion
+Docker	Local containerized environment
+Postgres	Data warehouse
+Metabase	BI dashboard and analytics
+Yahoo Finance API	Data source
 
-Your Astro project contains the following files and folders:
 
-- dags: This folder contains the Python files for your Airflow DAGs. By default, this directory includes one example DAG:
-    - `example_astronauts`: This DAG shows a simple ETL pipeline example that queries the list of astronauts currently in space from the Open Notify API and prints a statement for each astronaut. The DAG uses the TaskFlow API to define tasks in Python, and dynamic task mapping to dynamically print a statement for each astronaut. For more on how this DAG works, see our [Getting started tutorial](https://www.astronomer.io/docs/learn/get-started-with-airflow).
-- Dockerfile: This file contains a versioned Astro Runtime Docker image that provides a differentiated Airflow experience. If you want to execute other commands or overrides at runtime, specify them here.
-- include: This folder contains any additional files that you want to include as part of your project. It is empty by default.
-- packages.txt: Install OS-level packages needed for your project by adding them to this file. It is empty by default.
-- requirements.txt: Install Python packages needed for your project by adding them to this file. It is empty by default.
-- plugins: Add custom or community plugins for your project to this file. It is empty by default.
-- airflow_settings.yaml: Use this local-only file to specify Airflow Connections, Variables, and Pools instead of entering them in the Airflow UI as you develop DAGs in this project.
+=====================
+📂 Project Structure
+=====================
 
-Deploy Your Project Locally
-===========================
+multiple_stock_prices/
+│
+├── dags/
+│   └── stock_market.py
+│
+├── include/
+│   └── stock_market/
+│       ├── task.py
+│       └── stock_transform.py
+│
+├── spark/
+│   ├── master/
+│   └── worker/
+│
+├── docker-compose.yml
+├── requirements.txt
+├── Dockerfile
+└── README.md
 
-Start Airflow on your local machine by running 'astro dev start'.
 
-This command will spin up five Docker containers on your machine, each for a different Airflow component:
+⚙️ Pipeline Breakdown
+1. API Availability Check
 
-- Postgres: Airflow's Metadata Database
-- Scheduler: The Airflow component responsible for monitoring and triggering tasks
-- DAG Processor: The Airflow component responsible for parsing DAGs
-- API Server: The Airflow component responsible for serving the Airflow UI and API
-- Triggerer: The Airflow component responsible for triggering deferred tasks
+Airflow @task.sensor pings the Yahoo Finance API to ensure it's alive before any downstream tasks run.
 
-When all five containers are ready the command will open the browser to the Airflow UI at http://localhost:8080/. You should also be able to access your Postgres Database at 'localhost:5432/postgres' with username 'postgres' and password 'postgres'.
+2. Fetch Stock Prices
 
-Note: If you already have either of the above ports allocated, you can either [stop your existing Docker containers or change the port](https://www.astronomer.io/docs/astro/cli/troubleshoot-locally#ports-are-not-available-for-my-local-airflow-webserver).
+Pulls 90 days of data for the following symbols:
 
-Deploy Your Project to Astronomer
-=================================
+['AAPL', 'AMZN', 'GOOG', 'MSFT', 'NVDA']
 
-If you have an Astronomer account, pushing code to a Deployment on Astronomer is simple. For deploying instructions, refer to Astronomer documentation: https://www.astronomer.io/docs/astro/deploy-code/
+3. Store Raw JSON → MinIO
 
-Contact
-=======
+Each API response is saved at:
 
-The Astronomer CLI is maintained with love by the Astronomer team. To report a bug or suggest a change, reach out to our support.
+minio://stock-market/<symbol>/<YYYY-MM-DD>/prices.json
+
+4. PySpark JSON → Parquet
+
+The Spark job:
+
+Reads raw JSON
+
+Explodes nested structures
+
+Normalizes timestamps & indicators
+
+Writes formatted Parquet files
+
+Output path:
+
+minio://stock-market/processed/<symbol>/*.parquet
+
+5. Load into Postgres
+
+Each processed batch is appended into:
+
+public.stock_market
+
+
+Columns include:
+
+timestamp
+
+symbol
+
+open
+
+close
+
+high
+
+low
+
+volume
+
+6. Visualize in Metabase
+
+Metabase connects directly to Postgres to generate:
+
+Performance comparisons
+
+RSI signals
+
+Volatility metrics
+
+Daily trends
+
+Volume distributions
+
+🐳 Running the Project Locally
+1. Start the Entire Stack
+docker-compose up -d
+
+
+This launches:
+
+Airflow (webserver, scheduler, triggerer)
+
+Spark master + worker
+
+MinIO
+
+Postgres
+
+Metabase
+
+2. Access Services
+Service	URL
+Airflow UI	http://localhost:8080
+
+MinIO Console	http://localhost:9001
+
+Metabase	http://localhost:3000
+
+Postgres	localhost:5432
+3. Trigger the DAG
+
+In Airflow UI:
+
+DAG: stock_market
+
+
+Run manually or wait for the daily schedule.
+
+📊 Example Dashboard (Metabase)
+
+Attach the image you shared here:
+
+![Metabase Dashboard](./include/data/metabase/dashboard.png)
+
+🧪 Environment Variables
+
+Make sure these are set in your .env or Airflow connections:
+
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio123
+AWS_ACCESS_KEY_ID=minio
+AWS_SECRET_ACCESS_KEY=minio123
+ENDPOINT=http://minio:9000
+
+🔮 Future Enhancements
+
+Airflow SLA + email alerts
+
+Retry logic for flaky APIs
+
+Partitioned warehouse tables
+
+Adding Delta Lake support
+
+Deploying to Kubernetes
+
+🤝 Contributing
+
+Pull requests, suggestions, and improvements are welcome.
+
+📬 Contact
+
+If you want a walkthrough or collaboration, reach out on LinkedIn - https://www.linkedin.com/in/ravichintalapudi/
