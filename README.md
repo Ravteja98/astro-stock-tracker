@@ -1,7 +1,15 @@
-Overview
-========
+📌 README — End-to-End Stock Market Data Pipeline (Airflow + Spark + MinIO + Postgres + Metabase)
+🚀 Overview
 
-Welcome to Astronomer! This project was generated after you ran 'astro dev init' using the Astronomer CLI. This readme describes the contents of the project, as well as how to run Apache Airflow on your local machine.
+This project is a fully containerized end-to-end Data Engineering pipeline built using free and open-source tools.
+It ingests stock market data from the Yahoo Finance API, stores raw JSON in MinIO, processes it with PySpark, loads it into Postgres, and visualizes everything in Metabase.
+
+All orchestration is handled by Apache Airflow, running inside a Docker network that simulates a small self-contained “cloud”.
+
+🧩 Architecture
+
+<img width="3187" height="909" alt="Stock Pipeline Architecture" src="https://github.com/user-attachments/assets/2fd7e418-074e-4707-a2b7-d18c83d90375" />
+
 
 Project Contents
 ================
